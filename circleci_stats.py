@@ -41,16 +41,20 @@ class CircleClient:
 
     def get_failure_info(self, build_num):
         info = self.get(build_num)
+        build_url = info['build_url']
 
         failure_info = {}
         for s in info['steps']:
             step_name = s['name']
 
+
             for a in s['actions']:
                 if a['failed'] or a['status'] != "success":
                     failure_info = {
                         'step_name': step_name,
+                        'link': build_url,
                         'action_name': a['name'],
+                        'start_time': a['start_time'],
                         'status': a['status'],
                         'infrastructure_fail': a['infrastructure_fail'],
                         'output': a.get('output_url')
@@ -75,10 +79,12 @@ def get_failure_counts(failure_info):
         k = f"{i['step_name']}/{i['action_name']}"
         if k not in data:
             data[k] = {
-                'count': 0
+                'count': 0,
+                'builds': []
             }
 
         data[k]['count'] += 1
+        data[k]['builds'].append(i['link'])
 
     return data
 
