@@ -111,7 +111,7 @@ def inspect(ctx, filter, limit):
         for b in builds
     }
 
-    info = inspect_step('acceptance', details)
+    info = inspect_step(filter, details)
     click.echo(json.dumps(info))
 
 
