@@ -133,5 +133,22 @@ def stats(ctx, limit):
     click.echo(json.dumps(counts))
 
 
+@cli.command()
+@click.option('--limit', default=25)
+@click.pass_context
+def last(ctx, limit):
+    c = ctx.obj
+    builds = c.get_failed_builds(limit=limit)
+
+    details = {
+        b['build_num']: c.get_failure_info(b['build_num'])
+        for b in builds
+    }
+
+    #counts = sorted(counts.items(), key=lambda x: x[1]['count'], reverse=True)
+
+    click.echo(json.dumps(details))
+
+
 if __name__ == '__main__':
     cli()
