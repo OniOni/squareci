@@ -23,7 +23,7 @@ class CircleClient:
         self.auth = (auth or os.environ['SQUARE_KEY'], '')
 
 
-    def get(self, path='', limit=25, filter_='failed'):
+    def get(self, path='', limit=25, filter_=None):
         req = requests.get(
             f"{self.root}/{self.project}/{path}",
             params={'limit': limit, 'filter': filter_},
@@ -33,7 +33,7 @@ class CircleClient:
         return req.json()
 
     def get_failed_builds(self, limit=25):
-        full = self.get(limit=limit)
+        full = self.get(limit=limit, filter_='failed')
         return [
             sub_dict(b, ('build_num', 'status', 'retries'))
             for b in full
@@ -151,9 +151,67 @@ def last(ctx, limit):
         for b in builds
     }
 
-    #counts = sorted(counts.items(), key=lambda x: x[1]['count'], reverse=True)
-
     click.echo(json.dumps(details))
+
+
+@cli.command()
+@click.option('--limit', default=25)
+@click.pass_context
+def info(ctx, limit):
+    c = ctx.obj
+    builds = c.get(limit=limit)
+
+    info = {
+        'total': len(builds),
+        'branches': {}
+    }
+
+    for b in builds:
+        if b['status'] not in info:
+            info[b['status']] = 0
+
+        info[b['status']] += 1
+
+        if b['branch'] not in info['branches']:
+            info['branches'][b['branch']] = {
+                'total': 0
+            }
+
+        info['branches'][b['branch']]['total'] += 1
+
+        if b['status'] not in info['branches'][b['branch']]:
+            info['branches'][b['branch']][b['status']] = 0
+
+        info['branches'][b['branch']][b['status']] += 1
+
+    # click.echo(json.dumps(info))
+
+    click.echo("Branch\tt/s/f/fi\t\thealth")
+    for b, i in info['branches'].items():
+        failures = i.get('failed', 0) / i.get('total', 1)
+
+
+        if failures == 0:
+            status = '☀️'
+        elif failures < 0.4:
+            status = '🌤️'
+        elif failures < 0.6:
+            status = '☁️'
+        elif failures < 0.8:
+            status = '🌧️'
+        else:
+            status = '⛈️'
+
+        click.echo(f"{b}: ", nl=False)
+        click.echo("\t{}/{}/{}/{}".format(
+            i.get('total', 0),
+            i.get('success', 0),
+            i.get('failed', 0),
+            i.get('fixed', 0)
+        ), nl=False)
+
+        click.echo(f"\t\t{status}")
+    click.echo("----\n(t)otal / (s)uccess / (f)ailed / (fi)xed")
 
 
 if __name__ == '__main__':
